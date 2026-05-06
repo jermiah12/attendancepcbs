@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCBS Attendance Admin</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --ink: #172033;
+            --muted: #64748b;
+            --line: #dbe4ef;
+            --panel: rgba(255, 255, 255, 0.94);
+            --pcbs-red: #c91414;
+            --pcbs-red-dark: #a80f0f;
+            --blue: #2563eb;
+            --green: #059669;
+            --amber: #b45309;
+            --slate: #334155;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            color: var(--ink);
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+        .page-shell {
+            width: min(1240px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        .topbar {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            background: var(--pcbs-red);
+            color: #ffffff;
+            font-weight: 900;
+            box-shadow: 0 14px 26px rgba(142, 19, 19, 0.22);
+        }
+
+        .header-copy span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.88rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .header-copy h1 {
+            margin: 2px 0 0;
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            line-height: 1.05;
+        }
+
+        .nav-button,
+        .secondary-button,
+        .submit-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 900;
+            text-decoration: none;
+            transition: transform 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+        }
+
+        .nav-button,
+        .secondary-button {
+            padding: 0 12px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: var(--slate);
+        }
+
+        .submit-button {
+            width: 100%;
+            border: 0;
+            background: var(--pcbs-red);
+            color: #ffffff;
+            box-shadow: 0 12px 24px rgba(201, 20, 20, 0.22);
+        }
+
+        .nav-button:hover,
+        .secondary-button:hover,
+        .submit-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .submit-button:hover {
+            background: var(--pcbs-red-dark);
+        }
+
+        .secondary-button:disabled,
+        .submit-button:disabled {
+            cursor: wait;
+            opacity: 0.68;
+            transform: none;
+        }
+
+        .panel {
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            border-radius: 8px;
+            background: var(--panel);
+            box-shadow: 0 20px 55px rgba(15, 23, 42, 0.15);
+            overflow: hidden;
+        }
+
+        .panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(248, 250, 252, 0.82);
+        }
+
+        .panel-heading h2 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .panel-heading p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.86rem;
+            font-weight: 700;
+        }
+
+        .admin-login,
+        .admin-content {
+            display: grid;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .admin-login[hidden],
+        .admin-content[hidden],
+        .secondary-button[hidden] {
+            display: none;
+        }
+
+        .form-field {
+            display: grid;
+            gap: 7px;
+        }
+
+        .form-field label {
+            color: #334155;
+            font-size: 0.78rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-field input,
+        .form-field select {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+            color: var(--ink);
+            padding: 11px 12px;
+            outline: none;
+        }
+
+        .form-field input:focus,
+        .form-field select:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .admin-login-grid,
+        .admin-filters {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .admin-filters .form-field.full {
+            grid-column: 1 / -1;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .status-banner {
+            display: none;
+            margin: 0 20px 20px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .status-banner.success {
+            display: block;
+            border: 1px solid rgba(5, 150, 105, 0.25);
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .status-banner.error {
+            display: block;
+            border: 1px solid rgba(201, 20, 20, 0.22);
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+        }
+
+        .employee-card {
+            display: grid;
+            gap: 6px;
+            min-height: 110px;
+            border: 1px solid #dbe4ef;
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 12px;
+            color: var(--ink);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .employee-card:hover {
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+        }
+
+        .employee-card strong {
+            font-size: 0.94rem;
+            line-height: 1.2;
+        }
+
+        .employee-card span {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .employee-card .log-count {
+            color: var(--pcbs-red-dark);
+            font-size: 1.35rem;
+            font-weight: 950;
+            line-height: 1;
+        }
+
+        .admin-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #ffffff;
+        }
+
+        .admin-table {
+            width: 100%;
+            min-width: 760px;
+            border-collapse: collapse;
+        }
+
+        .admin-table th,
+        .admin-table td {
+            padding: 11px 12px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.86rem;
+        }
+
+        .admin-table th {
+            background: #f8fafc;
+            color: #334155;
+            font-size: 0.72rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .admin-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .admin-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .admin-empty {
+            padding: 18px;
+            color: var(--muted);
+            text-align: center;
+            font-weight: 750;
+        }
+
+        .action-pill {
+            display: inline-flex;
+            justify-content: center;
+            min-width: 92px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .action-pill.time_in {
+            background: #ecfdf5;
+            color: var(--green);
+        }
+
+        .action-pill.time_out {
+            background: #fef2f2;
+            color: var(--pcbs-red-dark);
+        }
+
+        .action-pill.break_start {
+            background: #fffbeb;
+            color: var(--amber);
+        }
+
+        .action-pill.break_end {
+            background: #eff6ff;
+            color: var(--blue);
+        }
+
+        @media (max-width: 760px) {
+            .page-shell {
+                width: min(100% - 22px, 680px);
+                padding: 18px 0;
+            }
+
+            .topbar,
+            .admin-login-grid,
+            .admin-filters {
+                grid-template-columns: 1fr;
+            }
+
+            .brand-mark {
+                width: 52px;
+                height: 52px;
+                font-size: 0.86rem;
+            }
+
+            .panel-heading,
+            .admin-login,
+            .admin-content {
+                padding-left: 14px;
+                padding-right: 14px;
+            }
+
+            .status-banner {
+                margin-left: 14px;
+                margin-right: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div class="brand-mark">PCBS</div>
+            <div class="header-copy">
+                <span>Attendance Admin</span>
+                <h1>Employee Logs</h1>
+            </div>
+            <a class="nav-button" href="attendancepcbs.html">Staff Login</a>
+        </header>
+
+        <main class="panel">
+            <div class="panel-heading">
+                <div>
+                    <h2>Admin Panel</h2>
+                    <p id="adminCurrentDate"></p>
+                </div>
+                <button class="secondary-button" type="button" id="adminLogoutButton" hidden>Sign Out</button>
+            </div>
+
+            <form class="admin-login" id="adminLoginForm" autocomplete="off">
+                <div class="admin-login-grid">
+                    <div class="form-field">
+                        <label for="adminUser">Username</label>
+                        <input type="text" id="adminUser" name="admin_user" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="adminPassword">Password</label>
+                        <input type="password" id="adminPassword" name="admin_password" required>
+                    </div>
+                </div>
+                <button class="submit-button" type="submit" id="adminLoginButton">Open Admin Logs</button>
+            </form>
+
+            <div class="admin-content" id="adminContent" hidden>
+                <div class="admin-filters">
+                    <div class="form-field full">
+                        <label for="adminSearch">Employee Search</label>
+                        <input type="search" id="adminSearch" placeholder="Search employee name">
+                    </div>
+                    <div class="form-field">
+                        <label for="adminDate">Date</label>
+                        <input type="date" id="adminDate">
+                    </div>
+                    <div class="form-field">
+                        <label for="adminAction">Action</label>
+                        <select id="adminAction">
+                            <option value="">All Actions</option>
+                            <option value="time_in">Time In</option>
+                            <option value="time_out">Time Out</option>
+                            <option value="break_start">Break Start</option>
+                            <option value="break_end">Break End</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="admin-actions">
+                    <button class="secondary-button" type="button" id="adminClearLogsButton" style="color: var(--pcbs-red-dark); border-color: #fca5a5; background: #fef2f2;">Clear All Logs</button>
+                    <button class="secondary-button" type="button" id="adminClearFilters">Clear Filters</button>
+                    <button class="secondary-button" type="button" id="adminRefreshButton">Refresh Logs</button>
+                </div>
+
+                <div class="summary-grid" id="employeeSummary"></div>
+
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Employee</th>
+                                <th>Action</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminLogRows"></tbody>
+                    </table>
+                    <div class="admin-empty" id="adminLogEmpty" hidden>No matching logs found.</div>
+                </div>
+            </div>
+
+            <div class="status-banner" id="adminStatus"></div>
+        </main>
+    </div>
+
+    <script>
+        document.getElementById('adminCurrentDate').textContent = new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        const adminLoginButton = document.getElementById('adminLoginButton');
+        const adminLogoutButton = document.getElementById('adminLogoutButton');
+        const adminContent = document.getElementById('adminContent');
+        const adminStatus = document.getElementById('adminStatus');
+        const adminSearch = document.getElementById('adminSearch');
+        const adminDate = document.getElementById('adminDate');
+        const adminAction = document.getElementById('adminAction');
+        const adminRefreshButton = document.getElementById('adminRefreshButton');
+        const adminClearLogsButton = document.getElementById('adminClearLogsButton');
+        const adminClearFilters = document.getElementById('adminClearFilters');
+        const employeeSummary = document.getElementById('employeeSummary');
+        const adminLogRows = document.getElementById('adminLogRows');
+        const adminLogEmpty = document.getElementById('adminLogEmpty');
+
+        let adminRecords = [];
+        let adminToken = '';
+
+        try {
+            adminToken = sessionStorage.getItem('attendanceAdminToken') || '';
+        } catch (error) {
+            adminToken = '';
+        }
+
+        const actionLabels = {
+            time_in: 'Time In',
+            time_out: 'Time Out',
+            break_start: 'Break Start',
+            break_end: 'Break End'
+        };
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function showAdminStatus(message, type) {
+            adminStatus.className = `status-banner ${type}`;
+            adminStatus.textContent = message;
+        }
+
+        function clearAdminStatus() {
+            adminStatus.className = 'status-banner';
+            adminStatus.textContent = '';
+        }
+
+        function setAdminOpen(isOpen) {
+            adminLoginForm.hidden = isOpen;
+            adminContent.hidden = !isOpen;
+            adminLogoutButton.hidden = !isOpen;
+        }
+
+        function formatRecordDate(value) {
+            if (!value) return '';
+            const date = new Date(`${value}T00:00:00`);
+            return date.toLocaleDateString('en-PH', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function formatRecordTime(record) {
+            if (!record.attendance_date || !record.attendance_time) {
+                return '';
+            }
+
+            const date = new Date(`${record.attendance_date}T${record.attendance_time}`);
+            return date.toLocaleTimeString('en-PH', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function formatDateTimeString(value) {
+            if (!value) return '';
+            const date = new Date(String(value).replace(' ', 'T'));
+            if (Number.isNaN(date.getTime())) return value;
+
+            return date.toLocaleString('en-PH', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function buildEmployeeSummary(records) {
+            const employees = {};
+            const today = new Date().toISOString().split('T')[0];
+
+            for (const record of records) {
+                let name = (record.employee_name || '').trim();
+                if (!name) name = 'Unknown Employee';
+                const key = name.toLowerCase();
+
+                if (!employees[key]) {
+                    employees[key] = {
+                        name: name,
+                        total_logs: 0,
+                        today_logs: 0,
+                        last_action: '',
+                        last_seen: ''
+                    };
+                }
+
+                employees[key].total_logs++;
+                if (record.attendance_date === today) {
+                    employees[key].today_logs++;
+                }
+
+                const createdAt = record.created_at || '';
+                const currentSeen = new Date(employees[key].last_seen || '1970-01-01').getTime();
+                const recordSeen = new Date(createdAt).getTime();
+
+                if (createdAt && recordSeen >= currentSeen) {
+                    employees[key].last_action = record.action_label || '';
+                    employees[key].last_seen = createdAt;
+                }
+            }
+
+            const arr = Object.values(employees);
+            arr.sort((a, b) => a.name.localeCompare(b.name));
+            return arr;
+        }
+
+        function renderEmployeeSummary(employees) {
+            if (!employees || employees.length === 0) {
+                employeeSummary.innerHTML = '<div class="admin-empty">No employee logs yet.</div>';
+                return;
+            }
+
+            const totalLogs = employees.reduce((sum, emp) => sum + emp.total_logs, 0);
+            const totalToday = employees.reduce((sum, emp) => sum + emp.today_logs, 0);
+
+            const allCard = `
+                <button class="employee-card" type="button" data-employee="">
+                    <strong>All Employees</strong>
+                    <span class="log-count">${escapeHtml(totalLogs)}</span>
+                    <span>${escapeHtml(totalToday)} today | View All</span>
+                </button>
+            `;
+
+            employeeSummary.innerHTML = allCard + employees.map((employee) => {
+                const lastSeen = employee.last_seen ? formatDateTimeString(employee.last_seen) : 'No logs';
+
+                return `
+                    <button class="employee-card" type="button" data-employee="${escapeHtml(employee.name)}">
+                        <strong>${escapeHtml(employee.name)}</strong>
+                        <span class="log-count">${escapeHtml(employee.total_logs || 0)}</span>
+                        <span>${escapeHtml(employee.today_logs || 0)} today | Last: ${escapeHtml(lastSeen)}</span>
+                    </button>
+                `;
+            }).join('');
+
+            employeeSummary.querySelectorAll('.employee-card').forEach((button) => {
+                button.addEventListener('click', () => {
+                    adminSearch.value = button.dataset.employee || '';
+                    renderAdminLogs();
+                });
+            });
+        }
+
+        function getFilteredAdminRecords() {
+            const needle = adminSearch.value.trim().toLowerCase();
+            const selectedDate = adminDate.value;
+            const selectedAction = adminAction.value;
+
+            return adminRecords.filter((record) => {
+                const haystack = `${record.employee_name || ''}`.toLowerCase();
+                const matchesSearch = needle === '' || haystack.includes(needle);
+                const matchesDate = selectedDate === '' || record.attendance_date === selectedDate;
+                const matchesAction = selectedAction === '' || record.attendance_action === selectedAction;
+
+                return matchesSearch && matchesDate && matchesAction;
+            });
+        }
+
+        function renderAdminLogs() {
+            const records = getFilteredAdminRecords();
+            adminLogEmpty.hidden = records.length > 0;
+
+            adminLogRows.innerHTML = records.map((record) => {
+                const rawAction = String(record.attendance_action || '');
+                const actionClass = rawAction.replace(/[^a-z_]/g, '');
+                const actionText = actionLabels[record.attendance_action] || record.action_label || '';
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(formatRecordDate(record.attendance_date))}</td>
+                        <td>${escapeHtml(formatRecordTime(record))}</td>
+                        <td><strong>${escapeHtml(record.employee_name || '')}</strong></td>
+                        <td><span class="action-pill ${actionClass}">${escapeHtml(actionText)}</span></td>
+                        <td>${escapeHtml(record.notes || '-')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getLocalRecords() {
+            try {
+                const data = JSON.parse(localStorage.getItem('pcbs_attendance_records') || '[]');
+                data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                return data;
+            } catch {
+                return [];
+            }
+        }
+
+        async function loadAdminLogs(silent = false) {
+            if (adminToken === '') {
+                if (!silent) {
+                    showAdminStatus('Admin login is required.', 'error');
+                }
+                return;
+            }
+
+            adminRefreshButton.disabled = true;
+
+            try {
+                // Simulate network
+                await new Promise(r => setTimeout(r, 200));
+
+                const records = getLocalRecords();
+                adminRecords = records;
+                renderEmployeeSummary(buildEmployeeSummary(records));
+                renderAdminLogs();
+
+                setAdminOpen(true);
+                
+                if (!silent) {
+                    showAdminStatus('Admin logs refreshed.', 'success');
+                }
+            } catch (error) {
+                if (!silent) {
+                    showAdminStatus(error.message, 'error');
+                }
+            } finally {
+                adminRefreshButton.disabled = false;
+            }
+        }
+
+        adminLoginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            adminLoginButton.disabled = true;
+            adminLoginButton.textContent = 'Opening...';
+            clearAdminStatus();
+
+            try {
+                // Simulate network
+                await new Promise(r => setTimeout(r, 400));
+                
+                const formData = new FormData(adminLoginForm);
+                const adminUser = formData.get('admin_user');
+                const adminPass = formData.get('admin_password');
+
+                if (adminUser !== 'admin' || adminPass !== '1234') {
+                    throw new Error('Invalid admin username or password.');
+                }
+
+                adminToken = 'local_valid_token';
+                try {
+                    sessionStorage.setItem('attendanceAdminToken', adminToken);
+                } catch (error) {}
+
+                adminLoginForm.reset();
+                setAdminOpen(true);
+                
+                const records = getLocalRecords();
+                adminRecords = records;
+                renderEmployeeSummary(buildEmployeeSummary(records));
+                renderAdminLogs();
+
+                showAdminStatus('Admin logs loaded.', 'success');
+            } catch (error) {
+                showAdminStatus(error.message, 'error');
+            } finally {
+                adminLoginButton.disabled = false;
+                adminLoginButton.textContent = 'Open Admin Logs';
+            }
+        });
+
+        adminLogoutButton.addEventListener('click', async () => {
+            adminToken = '';
+            try {
+                sessionStorage.removeItem('attendanceAdminToken');
+            } catch (error) {}
+            
+            adminRecords = [];
+            employeeSummary.innerHTML = '';
+            adminLogRows.innerHTML = '';
+            adminSearch.value = '';
+            adminDate.value = '';
+            adminAction.value = '';
+            setAdminOpen(false);
+            showAdminStatus('Signed out of admin logs.', 'success');
+        });
+
+        adminClearLogsButton.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to clear ALL attendance logs? This action cannot be undone.')) {
+                return;
+            }
+
+            adminClearLogsButton.disabled = true;
+            try {
+                // Simulate network
+                await new Promise(r => setTimeout(r, 200));
+
+                localStorage.setItem('pcbs_attendance_records', JSON.stringify([]));
+
+                const records = getLocalRecords();
+                adminRecords = records;
+                renderEmployeeSummary(buildEmployeeSummary(records));
+                renderAdminLogs();
+
+                showAdminStatus('All logs have been cleared.', 'success');
+            } catch (error) {
+                showAdminStatus(error.message, 'error');
+            } finally {
+                adminClearLogsButton.disabled = false;
+            }
+        });
+
+        adminRefreshButton.addEventListener('click', () => loadAdminLogs(false));
+        adminClearFilters.addEventListener('click', () => {
+            adminSearch.value = '';
+            adminDate.value = '';
+            adminAction.value = '';
+            renderAdminLogs();
+        });
+        adminSearch.addEventListener('input', renderAdminLogs);
+        adminDate.addEventListener('change', renderAdminLogs);
+        adminAction.addEventListener('change', renderAdminLogs);
+
+        loadAdminLogs(true);
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.waves.min.js"></script>
+    <script>
+        VANTA.WAVES({
+            el: "body",
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.00,
+            minWidth: 200.00,
+            scale: 1.00,
+            scaleMobile: 1.00,
+            color: 0x880037
+        })
+    </script>
+</body>
+
+</html>

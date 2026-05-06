@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCBS Attendance Login</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --ink: #172033;
+            --muted: #64748b;
+            --line: #dbe4ef;
+            --panel: rgba(255, 255, 255, 0.94);
+            --panel-strong: #ffffff;
+            --pcbs-red: #c91414;
+            --pcbs-red-dark: #a80f0f;
+            --blue: #2563eb;
+            --green: #059669;
+            --amber: #b45309;
+            --slate: #334155;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            color: var(--ink);
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit;
+        }
+
+        .page-shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        .topbar {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            background: var(--pcbs-red);
+            color: #ffffff;
+            font-weight: 900;
+            letter-spacing: 0;
+            box-shadow: 0 14px 26px rgba(142, 19, 19, 0.22);
+        }
+
+        .header-copy span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.88rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .header-copy h1 {
+            margin: 2px 0 0;
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            line-height: 1.05;
+            letter-spacing: 0;
+        }
+
+        .clock-panel {
+            min-width: 210px;
+            padding: 14px 16px;
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.86);
+            text-align: right;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        }
+
+        .clock-panel span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .clock-panel strong {
+            display: block;
+            margin-top: 4px;
+            font-size: 1.45rem;
+            line-height: 1;
+        }
+
+        .terminal-layout {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .terminal-panel {
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            border-radius: 8px;
+            background: var(--panel);
+            box-shadow: 0 20px 55px rgba(15, 23, 42, 0.15);
+            overflow: hidden;
+        }
+
+        .panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(248, 250, 252, 0.82);
+        }
+
+        .panel-heading h2 {
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: 0;
+        }
+
+        .panel-heading p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.86rem;
+        }
+
+        .attendance-form {
+            display: grid;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .form-field {
+            display: grid;
+            gap: 7px;
+        }
+
+        .form-field.full {
+            grid-column: 1 / -1;
+        }
+
+        .form-field label,
+        .action-label {
+            color: #334155;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-field input,
+        .form-field select,
+        .form-field textarea {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+            color: var(--ink);
+            padding: 11px 12px;
+            outline: none;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .form-field textarea {
+            min-height: 82px;
+            resize: vertical;
+        }
+
+        .form-field input:focus,
+        .form-field select:focus,
+        .form-field textarea:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .action-group {
+            display: grid;
+            gap: 8px;
+        }
+
+        .action-options {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .action-option {
+            position: relative;
+        }
+
+        .action-option input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .action-option span {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+            color: var(--slate);
+            font-weight: 850;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+        }
+
+        .action-option span:hover {
+            transform: translateY(-1px);
+            border-color: #94a3b8;
+        }
+
+        .action-option input:checked + span {
+            border-color: var(--pcbs-red);
+            background: #fff1f2;
+            color: var(--pcbs-red-dark);
+        }
+
+        .submit-button,
+        .secondary-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 900;
+            transition: transform 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+        }
+
+        .submit-button {
+            width: 100%;
+            background: var(--pcbs-red);
+            color: #ffffff;
+            box-shadow: 0 12px 24px rgba(201, 20, 20, 0.22);
+        }
+
+        .submit-button:hover,
+        .secondary-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .submit-button:disabled,
+        .secondary-button:disabled {
+            cursor: wait;
+            opacity: 0.68;
+            transform: none;
+        }
+
+        .submit-button:hover {
+            background: var(--pcbs-red-dark);
+        }
+
+        .secondary-button {
+            min-height: 36px;
+            padding: 0 12px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: var(--slate);
+            box-shadow: none;
+        }
+
+        .status-banner {
+            display: none;
+            margin: 0 20px 20px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .status-banner.success {
+            display: block;
+            border: 1px solid rgba(5, 150, 105, 0.25);
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .status-banner.error {
+            display: block;
+            border: 1px solid rgba(201, 20, 20, 0.22);
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        @media (max-width: 880px) {
+            .page-shell {
+                width: min(100% - 22px, 680px);
+                padding: 18px 0;
+            }
+
+            .topbar {
+                grid-template-columns: auto minmax(0, 1fr);
+            }
+
+            .clock-panel {
+                grid-column: 1 / -1;
+                text-align: left;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .brand-mark {
+                width: 52px;
+                height: 52px;
+                font-size: 0.86rem;
+            }
+
+            .field-grid,
+            .action-options {
+                grid-template-columns: 1fr;
+            }
+
+            .panel-heading,
+            .attendance-form {
+                padding-left: 14px;
+                padding-right: 14px;
+            }
+
+            .status-banner {
+                margin-left: 14px;
+                margin-right: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div class="brand-mark">PCBS</div>
+            <div class="header-copy">
+                <span>Attendance Terminal</span>
+                <h1>Staff Login</h1>
+            </div>
+            <div class="clock-panel">
+                <span id="currentDate"></span>
+                <strong id="currentTime"></strong>
+            </div>
+        </header>
+
+        <main class="terminal-layout">
+            <section class="terminal-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Attendance Form</h2>
+                        <p id="formDate"></p>
+                    </div>
+                </div>
+
+                <form class="attendance-form" id="attendanceForm" autocomplete="off">
+                    <div class="field-grid">
+                        <div class="form-field full">
+                            <label for="employeeName">Employee Name</label>
+                            <input type="text" id="employeeName" name="employee_name" maxlength="80" required>
+                        </div>
+                    </div>
+
+                    <div class="action-group">
+                        <div class="action-label">Attendance Action</div>
+                        <div class="action-options">
+                            <label class="action-option">
+                                <input type="radio" name="attendance_action" value="time_in" checked>
+                                <span>Time In</span>
+                            </label>
+                            <label class="action-option">
+                                <input type="radio" name="attendance_action" value="time_out">
+                                <span>Time Out</span>
+                            </label>
+                            <label class="action-option">
+                                <input type="radio" name="attendance_action" value="break_start">
+                                <span>Break Start</span>
+                            </label>
+                            <label class="action-option">
+                                <input type="radio" name="attendance_action" value="break_end">
+                                <span>Break End</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" name="notes" maxlength="180"></textarea>
+                    </div>
+
+                    <button class="submit-button" type="submit" id="submitButton">Log Attendance</button>
+                </form>
+
+                <div class="status-banner" id="statusBanner"></div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const attendanceForm = document.getElementById('attendanceForm');
+        const submitButton = document.getElementById('submitButton');
+        const statusBanner = document.getElementById('statusBanner');
+        const currentDate = document.getElementById('currentDate');
+        const currentTime = document.getElementById('currentTime');
+        const formDate = document.getElementById('formDate');
+
+        const actionLabels = {
+            time_in: 'Time In',
+            time_out: 'Time Out',
+            break_start: 'Break Start',
+            break_end: 'Break End'
+        };
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function updateClock() {
+            const now = new Date();
+            currentDate.textContent = now.toLocaleDateString('en-PH', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            currentTime.textContent = now.toLocaleTimeString('en-PH', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            formDate.textContent = now.toLocaleDateString('en-PH', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function showStatus(message, type) {
+            statusBanner.className = `status-banner ${type}`;
+            statusBanner.textContent = message;
+        }
+
+        // LocalStorage Backend Simulator
+        function getRecords() {
+            try {
+                return JSON.parse(localStorage.getItem('pcbs_attendance_records') || '[]');
+            } catch {
+                return [];
+            }
+        }
+
+        function saveRecord(record) {
+            const records = getRecords();
+            records.push(record);
+            localStorage.setItem('pcbs_attendance_records', JSON.stringify(records));
+        }
+
+        function checkDuplicate(employeeName, action, dateStr) {
+            const records = getRecords();
+            let lastAction = null;
+            let lastTime = 0;
+            
+            for (const r of records) {
+                if (r.employee_name.toLowerCase() === employeeName.toLowerCase() && r.attendance_date === dateStr) {
+                    const time = new Date(r.created_at).getTime();
+                    if (time >= lastTime) {
+                        lastTime = time;
+                        lastAction = r.attendance_action;
+                    }
+                }
+            }
+            return lastAction === action;
+        }
+
+        attendanceForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            submitButton.disabled = true;
+            submitButton.textContent = 'Saving...';
+            
+            // Simulate network delay
+            await new Promise(r => setTimeout(r, 400));
+
+            try {
+                const formData = new FormData(attendanceForm);
+                const employeeName = formData.get('employee_name').trim();
+                const attendanceAction = formData.get('attendance_action');
+                const notes = formData.get('notes').trim();
+
+                if (!employeeName) throw new Error('Employee name is required.');
+                if (!actionLabels[attendanceAction]) throw new Error('Invalid action.');
+
+                const now = new Date();
+                const dateStr = now.toISOString().split('T')[0];
+
+                if (checkDuplicate(employeeName, attendanceAction, dateStr)) {
+                    throw new Error(`Duplicate action: You have already logged ${actionLabels[attendanceAction]}.`);
+                }
+
+                const record = {
+                    id: Date.now().toString() + Math.floor(Math.random() * 1000),
+                    employee_name: employeeName,
+                    attendance_action: attendanceAction,
+                    action_label: actionLabels[attendanceAction],
+                    notes: notes,
+                    attendance_date: dateStr,
+                    attendance_time: now.toTimeString().split(' ')[0],
+                    created_at: now.toISOString().replace('T', ' ').split('.')[0]
+                };
+
+                saveRecord(record);
+
+                showStatus(`${record.action_label} saved for ${record.employee_name}.`, 'success');
+                document.getElementById('notes').value = '';
+                document.getElementById('employeeName').focus();
+            } catch (error) {
+                showStatus(error.message, 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Log Attendance';
+            }
+        });
+
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.waves.min.js"></script>
+    <script>
+        VANTA.WAVES({
+            el: "body",
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.00,
+            minWidth: 200.00,
+            scale: 1.00,
+            scaleMobile: 1.00,
+            color: 0x880037
+        })
+    </script>
+</body>
+
+</html>
