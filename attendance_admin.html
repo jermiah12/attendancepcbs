@@ -361,6 +361,29 @@
             color: var(--blue);
         }
 
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            display: grid;
+            place-items: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .modal-overlay[hidden] {
+            display: none;
+        }
+
+        .modal-content {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
         @media (max-width: 760px) {
             .page-shell {
                 width: min(100% - 22px, 680px);
@@ -453,6 +476,7 @@
                 <div class="admin-actions">
                     <button class="secondary-button" type="button" id="adminClearLogsButton" style="color: var(--pcbs-red-dark); border-color: #fca5a5; background: #fef2f2;">Clear All Logs</button>
                     <button class="secondary-button" type="button" id="adminClearFilters">Clear Filters</button>
+                    <button class="secondary-button" type="button" id="adminPrintButton" style="color: var(--blue); border-color: #bfdbfe; background: #eff6ff;">Print DTR</button>
                     <button class="secondary-button" type="button" id="adminRefreshButton">Refresh Logs</button>
                 </div>
 
@@ -479,6 +503,22 @@
         </main>
     </div>
 
+    <div id="printModal" class="modal-overlay" hidden>
+        <div class="modal-content">
+            <h3 style="margin-top:0; margin-bottom: 20px;">Print Daily Time Record</h3>
+            <div class="form-field">
+                <label for="modalPrintEmployee">Select Employee</label>
+                <select id="modalPrintEmployee" style="padding: 11px 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.95rem;">
+                    <option value="">All Employees</option>
+                </select>
+            </div>
+            <div style="margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="secondary-button" type="button" id="closePrintModal">Cancel</button>
+                <button class="submit-button" type="button" id="confirmPrintButton" style="width: auto; padding: 0 20px;">Print Selected</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.getElementById('adminCurrentDate').textContent = new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -491,6 +531,11 @@
         const adminDate = document.getElementById('adminDate');
         const adminAction = document.getElementById('adminAction');
         const adminRefreshButton = document.getElementById('adminRefreshButton');
+        const adminPrintButton = document.getElementById('adminPrintButton');
+        const printModal = document.getElementById('printModal');
+        const modalPrintEmployee = document.getElementById('modalPrintEmployee');
+        const closePrintModal = document.getElementById('closePrintModal');
+        const confirmPrintButton = document.getElementById('confirmPrintButton');
         const adminClearLogsButton = document.getElementById('adminClearLogsButton');
         const adminClearFilters = document.getElementById('adminClearFilters');
         const employeeSummary = document.getElementById('employeeSummary');
@@ -617,6 +662,7 @@
         function renderEmployeeSummary(employees) {
             if (!employees || employees.length === 0) {
                 employeeSummary.innerHTML = '<div class="admin-empty">No employee logs yet.</div>';
+                modalPrintEmployee.innerHTML = '<option value="">All Employees</option>';
                 return;
             }
 
@@ -641,6 +687,10 @@
                         <span>${escapeHtml(employee.today_logs || 0)} today | Last: ${escapeHtml(lastSeen)}</span>
                     </button>
                 `;
+            }).join('');
+
+            modalPrintEmployee.innerHTML = '<option value="">All Employees</option>' + employees.map(emp => {
+                return `<option value="${escapeHtml(emp.name)}">${escapeHtml(emp.name)}</option>`;
             }).join('');
 
             employeeSummary.querySelectorAll('.employee-card').forEach((button) => {
@@ -812,6 +862,175 @@
         });
 
         adminRefreshButton.addEventListener('click', () => loadAdminLogs(false));
+        adminPrintButton.addEventListener('click', () => {
+            printModal.hidden = false;
+        });
+
+        closePrintModal.addEventListener('click', () => {
+            printModal.hidden = true;
+        });
+
+        confirmPrintButton.addEventListener('click', () => {
+            let records = getFilteredAdminRecords();
+            const printEmp = modalPrintEmployee.value;
+            if (printEmp) {
+                records = records.filter(r => (r.employee_name || '') === printEmp);
+            }
+            
+            if (records.length === 0) {
+                alert('No logs available to print.');
+                return;
+            }
+
+            const reportDate = new Date().toLocaleDateString('en-PH');
+            
+            const grouped = {};
+            records.forEach(record => {
+                const emp = record.employee_name || 'Unknown';
+                const date = record.attendance_date || 'Unknown';
+                if (!grouped[emp]) grouped[emp] = {};
+                if (!grouped[emp][date]) grouped[emp][date] = { time_in: [], break_start: [], break_end: [], time_out: [] };
+                
+                const action = record.attendance_action;
+                if (grouped[emp][date][action]) {
+                    grouped[emp][date][action].push(record);
+                }
+            });
+
+            let printHtml = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>Print DTR</title>
+                <style>
+                    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; color: #111; }
+                    h2 { text-align: center; margin: 0 0 5px; font-size: 1.5rem; }
+                    .meta { text-align: center; margin-bottom: 25px; font-size: 0.9rem; color: #555; }
+                    .dtr-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 0.85rem; }
+                    .dtr-table th, .dtr-table td { border: 1px solid #ccc; padding: 8px 10px; text-align: center; }
+                    .dtr-table th { background-color: #f4f4f5; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; }
+                    .emp-header { background-color: #e2e8f0; text-align: left; font-weight: bold; font-size: 1rem; padding: 12px 10px; }
+                    .signature-block { margin-top: 40px; display: flex; justify-content: flex-end; margin-bottom: 40px; }
+                    .signature-line { width: 250px; text-align: center; }
+                    .signature-line div.line { border-top: 1px solid #111; padding-top: 5px; margin-top: 40px; font-weight: bold; }
+                    .page-break { page-break-after: always; }
+                    .page-break:last-child { page-break-after: auto; }
+                    @media print {
+                        body { padding: 0; }
+                        @page { margin: 0.5in; }
+                    }
+                </style>
+            </head>
+            <body>
+                <h2>Daily Time Record</h2>
+                <div class="meta">Generated on ${reportDate}</div>
+            `;
+
+            const employees = Object.keys(grouped).sort();
+            employees.forEach((emp, index) => {
+                printHtml += `
+                <table class="dtr-table">
+                    <thead>
+                        <tr>
+                            <th colspan="6" class="emp-header">Employee: ${escapeHtml(emp)}</th>
+                        </tr>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time In</th>
+                            <th>Break Start</th>
+                            <th>Break End</th>
+                            <th>Time Out</th>
+                            <th>Hours on Duty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+                
+                const dates = Object.keys(grouped[emp]).sort();
+                dates.forEach(date => {
+                    const dayData = grouped[emp][date];
+                    const maxRows = Math.max(
+                        dayData.time_in.length, dayData.break_start.length, 
+                        dayData.break_end.length, dayData.time_out.length, 1
+                    );
+                    
+                    let totalMs = 0;
+                    const timeInRecord = dayData.time_in[0];
+                    const timeOutRecord = dayData.time_out[dayData.time_out.length - 1]; 
+                    
+                    if (timeInRecord && timeOutRecord) {
+                        const tIn = new Date(`${date}T${timeInRecord.attendance_time}`).getTime();
+                        const tOut = new Date(`${date}T${timeOutRecord.attendance_time}`).getTime();
+                        
+                        let workMs = tOut - tIn;
+                        
+                        const bStart = dayData.break_start[0];
+                        const bEnd = dayData.break_end[0];
+                        if (bStart && bEnd) {
+                            const bIn = new Date(`${date}T${bStart.attendance_time}`).getTime();
+                            const bOut = new Date(`${date}T${bEnd.attendance_time}`).getTime();
+                            if (bOut > bIn) {
+                                workMs -= (bOut - bIn);
+                            }
+                        }
+                        if (workMs > 0) totalMs = workMs;
+                    }
+                    
+                    let hoursStr = '--';
+                    if (totalMs > 0) {
+                        const hours = Math.floor(totalMs / (1000 * 60 * 60));
+                        const mins = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
+                        hoursStr = `${hours}h ${mins}m`;
+                    }
+                    
+                    for (let i = 0; i < maxRows; i++) {
+                        printHtml += `<tr>`;
+                        if (i === 0) {
+                            printHtml += `<td rowspan="${maxRows}"><strong>${escapeHtml(formatRecordDate(date))}</strong></td>`;
+                        }
+                        printHtml += `<td>${escapeHtml(dayData.time_in[i] ? formatRecordTime(dayData.time_in[i]) : '--')}</td>`;
+                        printHtml += `<td>${escapeHtml(dayData.break_start[i] ? formatRecordTime(dayData.break_start[i]) : '--')}</td>`;
+                        printHtml += `<td>${escapeHtml(dayData.break_end[i] ? formatRecordTime(dayData.break_end[i]) : '--')}</td>`;
+                        printHtml += `<td>${escapeHtml(dayData.time_out[i] ? formatRecordTime(dayData.time_out[i]) : '--')}</td>`;
+                        if (i === 0) {
+                            printHtml += `<td rowspan="${maxRows}"><strong>${escapeHtml(hoursStr)}</strong></td>`;
+                        }
+                        printHtml += `</tr>`;
+                    }
+                });
+
+                printHtml += `
+                    </tbody>
+                </table>
+                <div class="signature-block">
+                    <div class="signature-line">
+                        <div class="line">${escapeHtml(emp)}</div>
+                        <div style="font-size: 0.8em; color: #555;">Employee Signature</div>
+                    </div>
+                </div>
+                `;
+                
+                if (index < employees.length - 1) {
+                    printHtml += `<div class="page-break"></div>`;
+                }
+            });
+
+            printHtml += `
+                <script>
+                    window.onload = () => { setTimeout(() => window.print(), 250); };
+                <\/script>
+            </body>
+            </html>
+            `;
+
+            const printWin = window.open('', '_blank');
+            printWin.document.write(printHtml);
+            printWin.document.close();
+            
+            printModal.hidden = true;
+        });
+
         adminClearFilters.addEventListener('click', () => {
             adminSearch.value = '';
             adminDate.value = '';
@@ -840,4 +1059,5 @@
         })
     </script>
 </body>
+
 </html>
